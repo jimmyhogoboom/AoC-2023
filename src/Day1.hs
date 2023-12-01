@@ -63,8 +63,9 @@ parseNum = go ""
   where
     go test rest = case rest of
       (d : ds)
-        | isNumberWord (test ++ [d]) -> (numberFromWord (test ++ [d]), ds)
-        | otherwise -> go (test ++ [d]) ds
+        | isNumberWord newTest -> (numberFromWord newTest, ds)
+        | otherwise -> go newTest ds
+        where newTest = test ++ [d]
       [] -> (Nothing, rest)
 
 readLine :: String -> Int
@@ -88,5 +89,4 @@ part2 = do
   contents <- readFile file
   let ls = filter (not . null) (lines contents)
   let result = map readLine ls
-  print result
   return $ show $ sum result
