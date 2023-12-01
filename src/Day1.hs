@@ -1,6 +1,9 @@
+{-# LANGUAGE NoImplicitPrelude #-}
 module Day1 (part1, part2) where
 
+import Import
 import Data.Char (isDigit)
+import System.IO (readFile)
 
 example :: String
 example = "src/input/day1example.txt"
@@ -31,7 +34,10 @@ part1 = do
   contents <- readFile file
   let ls = lines contents
   let result = map readLine1 (filter (not . null) ls)
-  return $ show $ sum $ map read result
+  let nums = mapM readMaybe result :: Maybe [Integer]
+  case nums of
+    Nothing -> return "Didn't find any numbers"
+    Just ns -> return $ show $ sum ns
 
 -- Begin part 2 --
 
@@ -68,8 +74,8 @@ parseNum = go ""
         where newTest = test ++ [d]
       [] -> (Nothing, rest)
 
-readLine :: String -> Int
-readLine = read . go []
+readLine :: String -> Maybe Int
+readLine = readMaybe . go []
   where
     go out line = case line of
       (c : cs)
@@ -88,5 +94,7 @@ part2 :: IO String
 part2 = do
   contents <- readFile file
   let ls = filter (not . null) (lines contents)
-  let result = map readLine ls
-  return $ show $ sum result
+  let result = mapM readLine ls
+  case result of
+    Nothing -> return "Didn't find any numbers"
+    Just ns -> return $ show $ sum ns
