@@ -5,6 +5,9 @@ import Data.Char (isDigit)
 example :: String
 example = "src/input/day1example.txt"
 
+example2 :: String
+example2 = "src/input/day1example2.txt"
+
 input :: String
 input = "src/input/day1.txt"
 
@@ -64,8 +67,8 @@ parseNum = go ""
         | otherwise -> go (test ++ [d]) ds
       [] -> (Nothing, rest)
 
-readLine :: String -> String
-readLine = go []
+readLine :: String -> Int
+readLine = read . go []
   where
     go out line = case line of
       (c : cs)
@@ -74,7 +77,7 @@ readLine = go []
             let parseResult = parseNum line
              in case parseResult of
                   (Nothing, _) -> go out cs
-                  (Just parsed, remainder) -> go (updateNumber out parsed) remainder
+                  (Just parsed, remainder) -> go (updateNumber out parsed) cs
       [] -> out
     updateNumber nums newNum = case nums of
       (n : _) -> [n, newNum]
@@ -83,6 +86,7 @@ readLine = go []
 part2 :: IO String
 part2 = do
   contents <- readFile file
-  let ls = lines contents
-  let result = map readLine (filter (not . null) ls)
-  return $ show $ sum $ map read result
+  let ls = filter (not . null) (lines contents)
+  let result = map readLine ls
+  print result
+  return $ show $ sum result
