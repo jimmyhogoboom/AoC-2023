@@ -21,7 +21,4 @@ part1 = do
   contents <- readFile file
   let ls = lines contents
   let result = map readLine ls
-  print result
-  -- _ <- map putStrLn result
-  -- putStrLn $ head result
-  return ""
+  return $ show $ sum $ map read result
