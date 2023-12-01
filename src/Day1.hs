@@ -6,15 +6,15 @@ example = "src/input/day1example.txt"
 file = example
 
 readLine :: String -> String
-readLine = go ""
+readLine = go []
   where
     go out line = case line of
       (c : cs) | isDigit c -> go (updateNumber out c) cs
                | otherwise -> go out cs
-      [] -> out
-    updateNumber num n
-      | null num = [n]
-      | otherwise = head num : [n]
+      [] -> if length out < 2 then [head out, head out] else out
+    updateNumber nums n
+      | null nums = [n]
+      | otherwise = head nums : [n]
 
 part1 :: IO String
 part1 = do
