@@ -1,4 +1,10 @@
 module Day1 (part1) where
 
-part1 :: String
-part1 = "This is the part 1 solution"
+example = "src/input/day1example.txt"
+
+file = example
+
+part1 :: IO String
+part1 = do
+  contents <- readFile file
+  return contents

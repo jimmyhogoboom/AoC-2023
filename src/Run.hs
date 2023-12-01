@@ -8,4 +8,6 @@ import Day1
 run :: RIO App ()
 run = do
   logInfo "We're inside the application!"
-  logInfo $ displayShow Day1.part1
+  day1 <- liftIO Day1.part1
+  logInfo $ displayShow day1
+  -- putStrLn day1
