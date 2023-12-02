@@ -5,9 +5,13 @@ module Run (run) where
 import Import
 import Day1
 
+day1 :: RIO App (String, String)
+day1 = do
+  p1 <- liftIO Day1.part1
+  p2 <- liftIO Day1.part2
+  return (p1, p2)
+
 run :: RIO App ()
 run = do
-  logInfo "We're inside the application!"
-  day1 <- liftIO Day1.part1
-  logInfo $ displayShow day1
-  -- putStrLn day1
+  (p1, p2) <- day1
+  logInfo $ displayShow [("1.1", p1), ("1.2", p2)]
