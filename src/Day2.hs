@@ -43,17 +43,18 @@ picksFromValues values =
 
 gameAndValues :: String -> [String]
 gameAndValues line = case parts of
-    [gameId, valuesString] -> [getId gameId, valuesString]
-    _ -> []
-  where parts = splitOn ':' line
-        getId = last . splitOn ' '
+  [gameId, valuesString] -> [getId gameId, valuesString]
+  _ -> []
+  where
+    parts = splitOn ':' line
+    getId = last . splitOn ' '
 
 gameAndPicks :: String -> (Integer, [Pick])
 gameAndPicks line =
   let parts = gameAndValues line
    in case parts of
-    [gameId, valuesString] -> (read gameId, picksFromValues valuesString)
-    _ -> (0, [])
+        [gameId, valuesString] -> (read gameId, picksFromValues valuesString)
+        _ -> (0, [])
 
 testBag :: [(String, Integer)]
 testBag = [("red", 12), ("green", 13), ("blue", 14)]
