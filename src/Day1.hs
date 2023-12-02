@@ -41,6 +41,7 @@ part1 = do
 
 -- Begin part 2 --
 
+    -- TODO: change to [(String, String)]
 numberWords :: [(String, Char)]
 numberWords =
   [ ("one", '1'),
@@ -53,6 +54,7 @@ numberWords =
     ("eight", '8'),
     ("nine", '9'),
     ("zero", '0')
+    -- TODO: add support for numbers up to 99
   ]
 
 mapKeys inputMap = map fst inputMap
