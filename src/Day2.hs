@@ -1,4 +1,4 @@
-module Day2 (part1) where
+module Day2 (part1, part2) where
 
 import Data.Char (isSpace)
 import Data.List (dropWhileEnd, find, nub)
@@ -119,29 +119,25 @@ maxPart picks t = go (0, "") (join picks)
           else go maxP ps
       [] -> maxP
 
-allTypes :: [Pick] -> [String]
-allTypes picks = nub $ map partType (join picks)
-
-maxEachType :: [Pick] -> [PickPart]
-maxEachType picks = map (maxPart picks) (allTypes picks)
-
 maxesOfGame :: (Integer, [Pick]) -> (Integer, [PickPart])
 maxesOfGame (gameId, picks) = (gameId, maxEachType picks)
-
-gameCounts :: (Integer, [PickPart]) -> [Integer]
-gameCounts (gameId, parts) = map partCount parts
+  where allTypes p = nub $ map partType (join p)
+        maxEachType p = map (maxPart p) (allTypes p)
 
 powerOfGame :: (Integer, [PickPart]) -> Integer
--- powerOfGame (gameId, picks) = foldl 1 (*) (map partCount (maxesOfGame game))
 powerOfGame game = product (gameCounts game)
+  where gameCounts (_, parts) = map partCount parts
+
+gamePower :: String -> Integer
+gamePower gameString = let
+  game = gameAndPicks gameString
+  maxes = maxesOfGame game
+  power = powerOfGame maxes
+  in power
 
 part2 :: IO String
 part2 = do
   contents <- readFile file
   let ls = lines contents
-  let games = map gameAndPicks ls
-  let maxes = map maxesOfGame games
-  let counts = map gameCounts maxes
-  let powers = map powerOfGame maxes
-  let sumOfPowers = sum powers
+  let sumOfPowers = sum $ map gamePower ls
   return $ show sumOfPowers
