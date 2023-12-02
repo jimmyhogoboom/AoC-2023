@@ -1,7 +1,8 @@
 module Day2 (part1) where
 
 import Data.Char (isSpace)
-import Data.List (dropWhileEnd, find)
+import Data.List (dropWhileEnd, find, nub)
+import Import
 
 example :: String
 example = "src/input/day2example1.txt"
@@ -56,6 +57,8 @@ gameAndPicks line =
         [gameId, valuesString] -> (read gameId, picksFromValues valuesString)
         _ -> (0, [])
 
+-------------- Part 1 --------------
+
 testBag :: [(String, Integer)]
 testBag = [("red", 12), ("green", 13), ("blue", 14)]
 
@@ -88,3 +91,57 @@ part1 = do
   let ls = lines contents
   let games = map gameAndPicks ls
   return $ show $ sumValidGameIds games
+
+----------- Part 2 --------------
+
+-- Game: (Integer, [Pick])
+
+partType :: PickPart -> String
+partType = snd
+
+partCount :: PickPart -> Integer
+partCount = fst
+
+partByType :: String -> Pick -> Maybe PickPart
+partByType t = find ((== t) . partType)
+
+findPartCount :: [PickPart] -> String -> Integer
+findPartCount parts part =
+  partCount $ fromMaybe (0, part) (partByType part parts)
+
+maxPart :: [Pick] -> String -> PickPart
+maxPart picks t = go (0, "") (join picks)
+  where
+    go maxP parts = case parts of
+      (part : ps) ->
+        if partType part == t && partCount maxP < partCount part
+          then go part ps
+          else go maxP ps
+      [] -> maxP
+
+allTypes :: [Pick] -> [String]
+allTypes picks = nub $ map partType (join picks)
+
+maxEachType :: [Pick] -> [PickPart]
+maxEachType picks = map (maxPart picks) (allTypes picks)
+
+maxesOfGame :: (Integer, [Pick]) -> (Integer, [PickPart])
+maxesOfGame (gameId, picks) = (gameId, maxEachType picks)
+
+gameCounts :: (Integer, [PickPart]) -> [Integer]
+gameCounts (gameId, parts) = map partCount parts
+
+powerOfGame :: (Integer, [PickPart]) -> Integer
+-- powerOfGame (gameId, picks) = foldl 1 (*) (map partCount (maxesOfGame game))
+powerOfGame game = product (gameCounts game)
+
+part2 :: IO String
+part2 = do
+  contents <- readFile file
+  let ls = lines contents
+  let games = map gameAndPicks ls
+  let maxes = map maxesOfGame games
+  let counts = map gameCounts maxes
+  let powers = map powerOfGame maxes
+  let sumOfPowers = sum powers
+  return $ show sumOfPowers
