@@ -35,15 +35,6 @@ file = example
 --    - (index of first digit of Number) - 1
 --    - (index of last digit of Number) + 1
 
-type Location = (Integer, Integer)
-
-data ParsedNumber = PartNumber Integer Location | OtherNumber Integer Location
-  deriving Show
-data Symbol = Symbol String Location
-  deriving Show
-
-type ParsedLine = ([ParsedNumber], [Symbol])
-
 -- Reader ParsedLine  >>= (numbers, symbols) -> Reader (...)
 -- runReader takes a function f, which has access to an environment e, and returns a value a
 --
@@ -64,17 +55,44 @@ type ParsedLine = ([ParsedNumber], [Symbol])
 --   return $ funThatDoesSomethingWithState sharedState
 --
 
+type Location = (Integer, Integer)
+
+data ParsedNumber = PartNumber Integer Location | OtherNumber Integer Location
+  deriving (Show)
+
+data Symbol = Symbol String Location
+  deriving (Show)
+
+type ParsedLine = ([ParsedNumber], [Symbol])
+
+-- What's the shared state I need from digit to digit?
+data Env = EnvData
+  { currentLine :: String,
+    currentlyParsingNumber :: String,
+    parsedNumbers :: [ParsedNumber],
+    parsedSymbols :: [Symbol]
+  }
+
 -- digit? keep in parsingNumber and append next step
 -- not digit? have parsingNumber kept? return parsingNumber as Number
 -- continue
 
-parseLine :: String -> ParsedLine
-parseLine = undefined
+parseLine :: String -> Reader Env ParsedLine
+parseLine line = do
+  env <- ask
+  -- step <- runReader parseStep line
+  return ([], [])
+
+parseStep :: Reader Env ParsedLine
+parseStep = undefined
+
+---------- End Pt. 1 Initial Attempt -------------
 
 part1 :: IO String
 part1 = do
   contents <- readFile file
   let ls = lines contents
+      -- parsedLines = map (runReader parseLine) ls
       answer = "0"
   return $ show (answer == exampleSolution, answer)
 
