@@ -129,11 +129,7 @@ powerOfGame game = product (gameCounts game)
   where gameCounts (_, parts) = map partCount parts
 
 gamePower :: String -> Integer
-gamePower gameString = let
-  game = gameAndPicks gameString
-  maxes = maxesOfGame game
-  power = powerOfGame maxes
-  in power
+gamePower = powerOfGame . maxesOfGame . gameAndPicks
 
 part2 :: IO String
 part2 = do
