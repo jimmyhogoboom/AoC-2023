@@ -58,8 +58,13 @@ file = example
 newtype LineNumber = LineNumber Integer
   deriving (Show)
 
+instance Num LineNumber where
+  LineNumber l1 + LineNumber l2 = LineNumber (l1 + l2)
+  fromInteger = LineNumber
+
 newtype Column = Column Integer
   deriving (Show, Eq)
+
 instance Num Column where
   Column c1 + Column c2 = Column (c1 + c2)
   Column c1 - Column c2 = Column (c1 - c2)
@@ -78,7 +83,7 @@ type ParsedLine = ([ParsedNumber], [Symbol])
 -- What's the shared state I need from digit to digit?
 data Env = EnvData
   { currentLine :: String,
-    lineNumber :: Integer,
+    lineNumber :: LineNumber,
     column :: Column,
     parsingStartedAt :: Maybe Column,
     currentlyParsingValue :: String,
@@ -90,79 +95,84 @@ data Env = EnvData
 isEngineSymbol :: Char -> Bool
 isEngineSymbol c = c `elem` ['*', '#', '+', '$']
 
-type Parser = Env -> String -> Env
+type Parser = Env -> Env
 
 -- TODO: This is doing too much. Should use a monad pattern for managing all the state stuff
 parseChar :: Parser
-parseChar env@(EnvData {
-    currentlyParsingValue = n,
-    parsingStartedAt = psa,
-    lineNumber = ln,
-    column = col
-  }) input =
-  case input of
-    [] -> env
-    (c : cs)
-      | isDigit c ->
-          parseChar
-                ( env
-                    { currentlyParsingValue = n ++ [c],
-                      parsingStartedAt = if null psa then Just col else psa,
-                      currentLine = cs,
-                      column = col + 1
-                    }
-                )
-                cs
-      -- TODO: Store parsed symbols
-      | isEngineSymbol c -> next "" cs
-      -- Store the value we were parsing when it's done
-      | not (null (currentlyParsingValue env)) ->
-          let lineNumber' = LineNumber ln
-              number = fromMaybe 0 $ readMaybe n
-              psa' = fromMaybe col psa
-              parsedNumber = PartNumber number (lineNumber', (psa', col - 1))
-              -- Use col - 1 in about because c is the character after the value
-           in parseChar
-                ( env
-                    { currentlyParsingValue = "",
-                      parsingStartedAt = Nothing,
-                      parsedNumbers = parsedNumber : parsedNumbers env,
-                      currentLine = cs,
-                      column = col + 1
-                    }
-                )
-                cs
-      | otherwise ->
-          parseChar
-            ( env
-                { currentLine = cs,
-                  column = col + 1
-                }
-            )
-            cs
-  where
-    next pv cs =
-      parseChar
-        ( env
-            { currentlyParsingValue = pv,
-              currentLine = cs,
-              column = col + 1
-            }
-        )
-        cs
+parseChar
+  env@( EnvData
+          { currentLine = cl,
+            currentlyParsingValue = n,
+            parsingStartedAt = psa,
+            lineNumber = ln,
+            column = col
+          }
+        ) =
+    case cl of
+      [] ->
+        env
+          { -- TODO: This really not oughta be done here
+            lineNumber = ln + 1
+          }
+      (c : cs)
+        | isDigit c ->
+            parseChar
+              ( env
+                  { currentlyParsingValue = n ++ [c],
+                    parsingStartedAt = if null psa then Just col else psa,
+                    currentLine = cs,
+                    column = col + 1
+                  }
+              )
+        -- Store a symbol immediately
+        | isEngineSymbol c ->
+            let symbol = Symbol [c] (ln, (col, col))
+             in parseChar
+                  ( env
+                      { currentlyParsingValue = "",
+                        parsingStartedAt = Nothing,
+                        parsedSymbols = symbol : parsedSymbols env,
+                        currentLine = cs,
+                        column = col + 1
+                      }
+                  )
+        -- Store the value we were parsing when it's done
+        | not (null (currentlyParsingValue env)) ->
+            let -- only parsing multi-digit numbers for now
+                number = fromMaybe 0 $ readMaybe n
+                psa' = fromMaybe col psa
+                parsedNumber = OtherNumber number (ln, (psa', col - 1))
+             in -- Use col - 1 in about because c is the character after the value
+                parseChar
+                  ( env
+                      { currentlyParsingValue = "",
+                        parsingStartedAt = Nothing,
+                        parsedNumbers = parsedNumber : parsedNumbers env,
+                        currentLine = cs,
+                        column = col + 1
+                      }
+                  )
+        | otherwise ->
+            parseChar
+              ( env
+                  { currentLine = cs,
+                    column = col + 1,
+                    lineNumber = ln + 1
+                  }
+              )
 
 runParser :: Parser -> String -> Env
-runParser p i = p (EnvData i 0 (Column 0) Nothing "" [] []) i
+runParser p i = p (EnvData i 0 (Column 0) Nothing "" [] [])
 
 part1 :: IO String
 part1 = do
   contents <- readFile file
   let ls = lines contents
       parseLine = runParser parseChar
-      parsedLine = parseLine $ head ls
+      parsedLines = map parseLine ls
       -- parsedLines = map parseLine ls
       answer = "0"
-  return $ show parsedLine
+  return $ show $ join $ map parsedNumbers parsedLines
 
 -- return $ show (answer == exampleSolution, answer)
 
