@@ -56,11 +56,16 @@ file = example
 --
 
 newtype LineNumber = LineNumber Integer
-  deriving (Show)
+  deriving (Show, Eq)
 
 instance Num LineNumber where
   LineNumber l1 + LineNumber l2 = LineNumber (l1 + l2)
+  LineNumber l1 - LineNumber l2 = LineNumber (l1 - l2)
+  LineNumber l1 * LineNumber l2 = LineNumber (l1 * l2)
   fromInteger = LineNumber
+  negate (LineNumber ln) = LineNumber (negate ln)
+  abs (LineNumber ln) = LineNumber (abs ln)
+  signum (LineNumber ln) = LineNumber (signum ln)
 
 newtype Column = Column Integer
   deriving (Show, Eq)
@@ -68,7 +73,11 @@ newtype Column = Column Integer
 instance Num Column where
   Column c1 + Column c2 = Column (c1 + c2)
   Column c1 - Column c2 = Column (c1 - c2)
+  Column l1 * Column l2 = Column (l1 * l2)
   fromInteger = Column
+  negate (Column ln) = Column (negate ln)
+  abs (Column ln) = Column (abs ln)
+  signum (Column ln) = Column (signum ln)
 
 type Location = (LineNumber, (Column, Column))
 
@@ -77,8 +86,6 @@ data ParsedNumber = PartNumber Integer Location | OtherNumber Integer Location
 
 data Symbol = Symbol String Location
   deriving (Show)
-
-type ParsedLine = ([ParsedNumber], [Symbol])
 
 -- What's the shared state I need from digit to digit?
 data Env = EnvData
@@ -98,8 +105,8 @@ isEngineSymbol c = c `elem` ['*', '#', '+', '$']
 type Parser = Env -> Env
 
 -- TODO: This is doing too much. Should use a monad pattern for managing all the state stuff
-parseChar :: Parser
-parseChar
+parseLine :: Parser
+parseLine
   env@( EnvData
           { currentLine = cl,
             currentlyParsingValue = n,
@@ -109,14 +116,10 @@ parseChar
           }
         ) =
     case cl of
-      [] ->
-        env
-          { -- TODO: This really not oughta be done here
-            lineNumber = ln + 1
-          }
+      [] -> env
       (c : cs)
         | isDigit c ->
-            parseChar
+            parseLine
               ( env
                   { currentlyParsingValue = n ++ [c],
                     parsingStartedAt = if null psa then Just col else psa,
@@ -127,7 +130,7 @@ parseChar
         -- Store a symbol immediately
         | isEngineSymbol c ->
             let symbol = Symbol [c] (ln, (col, col))
-             in parseChar
+             in parseLine
                   ( env
                       { currentlyParsingValue = "",
                         parsingStartedAt = Nothing,
@@ -143,7 +146,7 @@ parseChar
                 psa' = fromMaybe col psa
                 parsedNumber = OtherNumber number (ln, (psa', col - 1))
              in -- Use col - 1 in about because c is the character after the value
-                parseChar
+                parseLine
                   ( env
                       { currentlyParsingValue = "",
                         parsingStartedAt = Nothing,
@@ -153,26 +156,84 @@ parseChar
                       }
                   )
         | otherwise ->
-            parseChar
+            parseLine
               ( env
                   { currentLine = cs,
-                    column = col + 1,
-                    lineNumber = ln + 1
+                    column = col + 1
                   }
               )
 
-runParser :: Parser -> String -> Env
-runParser p i = p (EnvData i 0 (Column 0) Nothing "" [] [])
+lineNumberOfPart :: ParsedNumber -> LineNumber
+lineNumberOfPart (PartNumber _ (ln, _)) = ln
+lineNumberOfPart (OtherNumber _ (ln, _)) = ln
+
+boundsOfPart :: ParsedNumber -> (Column, Column)
+boundsOfPart (PartNumber _ (_, bounds)) = bounds
+boundsOfPart (OtherNumber _ (_, bounds)) = bounds
+
+partNumber :: ParsedNumber -> Integer
+partNumber (PartNumber n (_, _)) = n
+partNumber (OtherNumber n (_, _)) = n
+
+lineNumberOfSymbol :: Symbol -> LineNumber
+lineNumberOfSymbol (Symbol _ (ln, _)) = ln
+
+indexOfSymbol :: Symbol -> Column
+indexOfSymbol (Symbol _ (_, (i, _))) = i
+
+-- get list of symbols on line above
+symbolsAboveNumber :: [Symbol] -> ParsedNumber -> [Symbol]
+symbolsAboveNumber symbols parsedNumber =
+  filter (\s -> lineNumberOfPart parsedNumber == lineNumberOfSymbol s + 1) symbols
+
+-- get list of symbols on line below
+symbolsBelowNumber :: [Symbol] -> ParsedNumber -> [Symbol]
+symbolsBelowNumber symbols parsedNumber =
+  filter (\s -> lineNumberOfPart parsedNumber == lineNumberOfSymbol s - 1) symbols
+
+-- for each number
+-- check line above, from index start -1 to end + 1
+-- check the same line, at indexes start - 1 and end + 1
+-- check line below, from index start -1 to end + 1
+-- If any of above, update number as PartNumber
+idPart :: [Symbol] -> ParsedNumber -> ParsedNumber
+idPart symbols otherNumber = undefined
+
+-- TODO: function to get list of symbols between column range
+
+allParsedSymbols :: [Env] -> [Symbol]
+allParsedSymbols ls = join $ map parsedSymbols ls
+
+parseLines :: [String] -> Env
+parseLines il = go (envFromString "", il)
+  where
+    go (inputEnv, inputLines) =
+      case inputLines of
+        (ln : ls) -> go (parseLine (nextEnv inputEnv ln), ls)
+        [] -> inputEnv
+    nextEnv env@(EnvData {lineNumber = ln}) l =
+      env {currentLine = l, lineNumber = ln + 1, column = 0}
+
+envFromString :: String -> Env
+envFromString i = EnvData i 0 (Column 0) Nothing "" [] []
+
+testPart = OtherNumber 1 (1, (0, 2))
+
+readTest = do
+  contents <- readFile file
+  let ls = lines contents
+      parsedLines = parseLines ls
+      symbols = parsedSymbols parsedLines
+      r = symbolsBelowNumber symbols testPart
+  print symbols
+  return r
 
 part1 :: IO String
 part1 = do
   contents <- readFile file
   let ls = lines contents
-      parseLine = runParser parseChar
-      parsedLines = map parseLine ls
-      -- parsedLines = map parseLine ls
       answer = "0"
-  return $ show $ join $ map parsedNumbers parsedLines
+  return $ show $ parsedSymbols (parseLines ls)
 
 -- return $ show (answer == exampleSolution, answer)
 
