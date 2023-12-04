@@ -17,8 +17,10 @@ exampleSolution = "4361"
 puzzleInput :: String
 puzzleInput = "src/input/day3.txt"
 
+testInput = "src/input/day3test.txt"
+
 file :: String
-file = example
+file = puzzleInput
 
 -- adjacent is:
 -- - Number is immediately followed by a Symbol (123*)
@@ -83,7 +85,7 @@ data Env = EnvData
 type Parser = Env -> Env
 
 isEngineSymbol :: Char -> Bool
-isEngineSymbol c = c `elem` ['*', '#', '+', '$']
+isEngineSymbol c = notElem c "." && not (isDigit c)
 
 -- TODO: This is doing too much. Should use a monad pattern for managing all the state stuff
 parseLine :: Parser
@@ -97,7 +99,31 @@ parseLine
           }
         ) =
     case cl of
-      [] -> env
+      [] ->
+        let doStore = not (null (currentlyParsingValue env))
+         in if doStore
+              then
+                let -- only parsing multi-digit numbers for now
+                    number = fromMaybe 0 $ readMaybe n
+                    psa' = fromMaybe col psa
+                    parsedNumber = OtherNumber number (ln, (psa', col - 1))
+                 in -- Use col - 1 in about because c is the character after the value
+                    ( env
+                        { currentlyParsingValue = "",
+                          parsingStartedAt = Nothing,
+                          parsedNumbers = parsedNumber : parsedNumbers env,
+                          currentLine = "",
+                          column = col + 1
+                        }
+                    )
+              else
+                ( env
+                    { currentlyParsingValue = "",
+                      parsingStartedAt = Nothing,
+                      currentLine = "",
+                      column = col + 1
+                    }
+                )
       (c : cs)
         | isDigit c ->
             parseLine
@@ -255,23 +281,22 @@ parseLines il = go (envFromString "", il)
     nextEnv env@(EnvData {lineNumber = ln}) l =
       env {currentLine = l, lineNumber = ln + 1, column = 0}
 
-partNumberSum :: [String] -> Integer
-partNumberSum ls = let
-  parsedLines = parseLines ls
-  symbols = parsedSymbols parsedLines
-  nums = parsedNumbers parsedLines
-  identifiedParts = map (idPart symbols) nums
-  parts = onlyParts identifiedParts
-  in sumOfParts parts
+parsePartNumbers :: [String] -> [ParsedNumber]
+parsePartNumbers ls =
+  let parsedLines = parseLines ls
+      symbols = parsedSymbols parsedLines
+      nums = parsedNumbers parsedLines
+      identifiedNumbers = map (idPart symbols) nums
+   in onlyParts identifiedNumbers
 
 part1 :: IO String
 part1 = do
   contents <- readFile file
   let ls = lines contents
-      answer = partNumberSum ls
+      parts = parsePartNumbers ls
+      answer = sumOfParts parts
+      partNumbers = map partNumber parts
   return $ show answer
-
--- return $ show (answer == exampleSolution, answer)
 
 part2 :: IO String
 part2 = do
