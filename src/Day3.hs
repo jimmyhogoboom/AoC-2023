@@ -59,9 +59,13 @@ newtype LineNumber = LineNumber Integer
   deriving (Show)
 
 newtype Column = Column Integer
-  deriving (Show)
+  deriving (Show, Eq)
+instance Num Column where
+  Column c1 + Column c2 = Column (c1 + c2)
+  Column c1 - Column c2 = Column (c1 - c2)
+  fromInteger = Column
 
-type Location = (LineNumber, Column)
+type Location = (LineNumber, (Column, Column))
 
 data ParsedNumber = PartNumber Integer Location | OtherNumber Integer Location
   deriving (Show)
@@ -75,7 +79,8 @@ type ParsedLine = ([ParsedNumber], [Symbol])
 data Env = EnvData
   { currentLine :: String,
     lineNumber :: Integer,
-    column :: Integer,
+    column :: Column,
+    parsingStartedAt :: Maybe Column,
     currentlyParsingValue :: String,
     parsedNumbers :: [ParsedNumber],
     parsedSymbols :: [Symbol]
@@ -87,42 +92,40 @@ isEngineSymbol c = c `elem` ['*', '#', '+', '$']
 
 type Parser = Env -> String -> Env
 
--- digit? keep in parsingNumber and append next step
--- not digit? have parsingNumber kept? return parsingNumber as Number
--- continue
+-- TODO: This is doing too much. Should use a monad pattern for managing all the state stuff
 parseChar :: Parser
-parseChar env@(EnvData {currentlyParsingValue = n, lineNumber = ln, column = col}) input =
+parseChar env@(EnvData {
+    currentlyParsingValue = n,
+    parsingStartedAt = psa,
+    lineNumber = ln,
+    column = col
+  }) input =
   case input of
     [] -> env
     (c : cs)
-      -- TODO: break out these case bodies as functions
       | isDigit c ->
           parseChar
-            ( env
-                { currentlyParsingValue = n ++ [c],
-                  currentLine = cs,
-                  column = col + 1
-                }
-            )
-            cs
-      | isEngineSymbol c ->
-          parseChar
-            ( env
-                { currentlyParsingValue = "",
-                  currentLine = cs,
-                  column = col + 1
-                }
-            )
-            cs
+                ( env
+                    { currentlyParsingValue = n ++ [c],
+                      parsingStartedAt = if null psa then Just col else psa,
+                      currentLine = cs,
+                      column = col + 1
+                    }
+                )
+                cs
+      -- TODO: Store parsed symbols
+      | isEngineSymbol c -> next "" cs
       -- Store the value we were parsing when it's done
       | not (null (currentlyParsingValue env)) ->
           let lineNumber' = LineNumber ln
-              column' = Column col
               number = fromMaybe 0 $ readMaybe n
-              parsedNumber = PartNumber number (lineNumber', column')
+              psa' = fromMaybe col psa
+              parsedNumber = PartNumber number (lineNumber', (psa', col - 1))
+              -- Use col - 1 in about because c is the character after the value
            in parseChar
                 ( env
                     { currentlyParsingValue = "",
+                      parsingStartedAt = Nothing,
                       parsedNumbers = parsedNumber : parsedNumbers env,
                       currentLine = cs,
                       column = col + 1
@@ -137,11 +140,19 @@ parseChar env@(EnvData {currentlyParsingValue = n, lineNumber = ln, column = col
                 }
             )
             cs
+  where
+    next pv cs =
+      parseChar
+        ( env
+            { currentlyParsingValue = pv,
+              currentLine = cs,
+              column = col + 1
+            }
+        )
+        cs
 
 runParser :: Parser -> String -> Env
-runParser p i = p (EnvData i 0 0 "" [] []) i
-
----------- End Pt. 1 Initial Attempt -------------
+runParser p i = p (EnvData i 0 (Column 0) Nothing "" [] []) i
 
 part1 :: IO String
 part1 = do
