@@ -191,6 +191,10 @@ symbolsBelowNumber :: [Symbol] -> ParsedNumber -> [Symbol]
 symbolsBelowNumber symbols parsedNumber =
   filter (\s -> lineNumberOfPart parsedNumber == lineNumberOfSymbol s - 1) symbols
 
+symbolsOnSameLine :: [Symbol] -> ParsedNumber -> [Symbol]
+symbolsOnSameLine symbols parsedNumber =
+  filter (\s -> lineNumberOfPart parsedNumber == lineNumberOfSymbol s) symbols
+
 indexInRange :: (Column, Column) -> Column -> Bool
 indexInRange (startI, endI) index = index >= startI && index <= endI
 
@@ -203,13 +207,27 @@ symbolsInRange symbols parsedNumber =
     validRange = (startI - 1, endI + 1)
     match s = indexInRange validRange (indexOfSymbol s)
 
--- for each number
+partNumberFromOther :: ParsedNumber -> ParsedNumber
+partNumberFromOther i = case i of
+  OtherNumber n l -> PartNumber n l
+  _ -> undefined
+
 -- check line above, from index start -1 to end + 1
 -- check the same line, at indexes start - 1 and end + 1
 -- check line below, from index start -1 to end + 1
--- If any of above, update number as PartNumber
+-- If symbols in any of above, number is a PartNumber
 idPart :: [Symbol] -> ParsedNumber -> ParsedNumber
-idPart symbols otherNumber = undefined
+idPart symbols otherNumber
+  | hasSymbol = partNumberFromOther otherNumber
+  | otherwise = otherNumber
+  where
+    nearLine = join [
+        symbolsBelowNumber symbols otherNumber,
+        symbolsAboveNumber symbols otherNumber,
+        symbolsOnSameLine symbols otherNumber
+      ]
+    inRange = symbolsInRange nearLine otherNumber
+    hasSymbol = not $ null inRange
 
 allParsedSymbols :: [Env] -> [Symbol]
 allParsedSymbols ls = join $ map parsedSymbols ls
@@ -228,6 +246,7 @@ envFromString :: String -> Env
 envFromString i = EnvData i 0 (Column 0) Nothing "" [] []
 
 testPart = OtherNumber 467 (1, (0, 2))
+testNotPart = OtherNumber 114 (1, (5, 7))
 
 readTest = do
   contents <- readFile file
@@ -235,10 +254,11 @@ readTest = do
       parsedLines = parseLines ls
       symbols = parsedSymbols parsedLines
       -- r = symbolsBelowNumber symbols testPart
-      r = symbolsInRange symbols testPart
+      -- r = symbolsInRange symbols testPart
+      part = idPart symbols testPart
+      notPart = idPart symbols testNotPart
   print symbols
-  print $ "in range: " ++ show (indexInRange (Column (-1), Column 3) (Column 3))
-  return r
+  return $ show (part, notPart)
 
 part1 :: IO String
 part1 = do
