@@ -68,7 +68,7 @@ instance Num LineNumber where
   signum (LineNumber ln) = LineNumber (signum ln)
 
 newtype Column = Column Integer
-  deriving (Show, Eq)
+  deriving (Show, Eq, Ord)
 
 instance Num Column where
   Column c1 + Column c2 = Column (c1 + c2)
@@ -99,10 +99,10 @@ data Env = EnvData
   }
   deriving (Show)
 
+type Parser = Env -> Env
+
 isEngineSymbol :: Char -> Bool
 isEngineSymbol c = c `elem` ['*', '#', '+', '$']
-
-type Parser = Env -> Env
 
 -- TODO: This is doing too much. Should use a monad pattern for managing all the state stuff
 parseLine :: Parser
@@ -191,6 +191,18 @@ symbolsBelowNumber :: [Symbol] -> ParsedNumber -> [Symbol]
 symbolsBelowNumber symbols parsedNumber =
   filter (\s -> lineNumberOfPart parsedNumber == lineNumberOfSymbol s - 1) symbols
 
+indexInRange :: (Column, Column) -> Column -> Bool
+indexInRange (startI, endI) index = index >= startI && index <= endI
+
+-- get list of symbols between column range
+symbolsInRange :: [Symbol] -> ParsedNumber -> [Symbol]
+symbolsInRange symbols parsedNumber =
+  filter match symbols
+  where
+    (startI, endI) = boundsOfPart parsedNumber
+    validRange = (startI - 1, endI + 1)
+    match s = indexInRange validRange (indexOfSymbol s)
+
 -- for each number
 -- check line above, from index start -1 to end + 1
 -- check the same line, at indexes start - 1 and end + 1
@@ -198,8 +210,6 @@ symbolsBelowNumber symbols parsedNumber =
 -- If any of above, update number as PartNumber
 idPart :: [Symbol] -> ParsedNumber -> ParsedNumber
 idPart symbols otherNumber = undefined
-
--- TODO: function to get list of symbols between column range
 
 allParsedSymbols :: [Env] -> [Symbol]
 allParsedSymbols ls = join $ map parsedSymbols ls
@@ -217,15 +227,17 @@ parseLines il = go (envFromString "", il)
 envFromString :: String -> Env
 envFromString i = EnvData i 0 (Column 0) Nothing "" [] []
 
-testPart = OtherNumber 1 (1, (0, 2))
+testPart = OtherNumber 467 (1, (0, 2))
 
 readTest = do
   contents <- readFile file
   let ls = lines contents
       parsedLines = parseLines ls
       symbols = parsedSymbols parsedLines
-      r = symbolsBelowNumber symbols testPart
+      -- r = symbolsBelowNumber symbols testPart
+      r = symbolsInRange symbols testPart
   print symbols
+  print $ "in range: " ++ show (indexInRange (Column (-1), Column 3) (Column 3))
   return r
 
 part1 :: IO String
