@@ -20,12 +20,6 @@ puzzleInput = "src/input/day3.txt"
 file :: String
 file = example
 
--- add up all the part numbers
--- part number is "adjacent" to symbol
---
--- 01234
--- 333..
--- ...*.
 -- adjacent is:
 -- - Number is immediately followed by a Symbol (123*)
 -- - Symbol on line after Number and its index is between:
@@ -35,20 +29,7 @@ file = example
 --    - (index of first digit of Number) - 1
 --    - (index of last digit of Number) + 1
 
--- Reader ParsedLine  >>= (numbers, symbols) -> Reader (...)
--- runReader takes a function f, which has access to an environment e, and returns a value a
---
--- reader is a function that takes a shared state and returns some value
--- ex :: Reader SharedState Result
--- ex =
---   ask >>= \sharedState ->
---     return $ funThatDoesSomethingWithState sharedState
---
--- runReader ex mySharedState
---
--- It's kind of like >>= means "bind a callback"
---
--- refactor:
+-- TODO: refactor using a Reader or some other high-level pattern:
 -- ex :: Reader SharedState Result
 -- ex = do
 --   sharedState <- ask
@@ -130,15 +111,34 @@ parseLine
         -- Store a symbol immediately
         | isEngineSymbol c ->
             let symbol = Symbol [c] (ln, (col, col))
-             in parseLine
-                  ( env
-                      { currentlyParsingValue = "",
-                        parsingStartedAt = Nothing,
-                        parsedSymbols = symbol : parsedSymbols env,
-                        currentLine = cs,
-                        column = col + 1
-                      }
-                  )
+                doStore = not (null (currentlyParsingValue env))
+             in if doStore
+                  then
+                    let -- only parsing multi-digit numbers for now
+                        number = fromMaybe 0 $ readMaybe n
+                        psa' = fromMaybe col psa
+                        parsedNumber = OtherNumber number (ln, (psa', col - 1))
+                     in -- Use col - 1 in about because c is the character after the value
+                        parseLine
+                          ( env
+                              { currentlyParsingValue = "",
+                                parsingStartedAt = Nothing,
+                                parsedNumbers = parsedNumber : parsedNumbers env,
+                                parsedSymbols = symbol : parsedSymbols env,
+                                currentLine = cs,
+                                column = col + 1
+                              }
+                          )
+                  else
+                    parseLine
+                      ( env
+                          { currentlyParsingValue = "",
+                            parsingStartedAt = Nothing,
+                            parsedSymbols = symbol : parsedSymbols env,
+                            currentLine = cs,
+                            column = col + 1
+                          }
+                      )
         -- Store the value we were parsing when it's done
         | not (null (currentlyParsingValue env)) ->
             let -- only parsing multi-digit numbers for now
@@ -221,16 +221,29 @@ idPart symbols otherNumber
   | hasSymbol = partNumberFromOther otherNumber
   | otherwise = otherNumber
   where
-    nearLine = join [
-        symbolsBelowNumber symbols otherNumber,
-        symbolsAboveNumber symbols otherNumber,
-        symbolsOnSameLine symbols otherNumber
-      ]
+    nearLine =
+      join
+        [ symbolsBelowNumber symbols otherNumber,
+          symbolsAboveNumber symbols otherNumber,
+          symbolsOnSameLine symbols otherNumber
+        ]
     inRange = symbolsInRange nearLine otherNumber
     hasSymbol = not $ null inRange
 
-allParsedSymbols :: [Env] -> [Symbol]
-allParsedSymbols ls = join $ map parsedSymbols ls
+onlyParts :: [ParsedNumber] -> [ParsedNumber]
+onlyParts = filter isPart
+  where
+    isPart p = case p of
+      (PartNumber _ _) -> True
+      _ -> False
+
+sumOfParts :: [ParsedNumber] -> Integer
+sumOfParts = sum . numbers
+  where
+    numbers = map partNumber
+
+envFromString :: String -> Env
+envFromString i = EnvData i 0 (Column 0) Nothing "" [] []
 
 parseLines :: [String] -> Env
 parseLines il = go (envFromString "", il)
@@ -242,30 +255,21 @@ parseLines il = go (envFromString "", il)
     nextEnv env@(EnvData {lineNumber = ln}) l =
       env {currentLine = l, lineNumber = ln + 1, column = 0}
 
-envFromString :: String -> Env
-envFromString i = EnvData i 0 (Column 0) Nothing "" [] []
-
-testPart = OtherNumber 467 (1, (0, 2))
-testNotPart = OtherNumber 114 (1, (5, 7))
-
-readTest = do
-  contents <- readFile file
-  let ls = lines contents
-      parsedLines = parseLines ls
-      symbols = parsedSymbols parsedLines
-      -- r = symbolsBelowNumber symbols testPart
-      -- r = symbolsInRange symbols testPart
-      part = idPart symbols testPart
-      notPart = idPart symbols testNotPart
-  print symbols
-  return $ show (part, notPart)
+partNumberSum :: [String] -> Integer
+partNumberSum ls = let
+  parsedLines = parseLines ls
+  symbols = parsedSymbols parsedLines
+  nums = parsedNumbers parsedLines
+  identifiedParts = map (idPart symbols) nums
+  parts = onlyParts identifiedParts
+  in sumOfParts parts
 
 part1 :: IO String
 part1 = do
   contents <- readFile file
   let ls = lines contents
-      answer = "0"
-  return $ show $ parsedSymbols (parseLines ls)
+      answer = partNumberSum ls
+  return $ show answer
 
 -- return $ show (answer == exampleSolution, answer)
 
