@@ -4,7 +4,7 @@ module Day3
   )
 where
 
-import Data.Char (isSpace, isDigit)
+import Data.Char (isDigit, isSpace)
 import Data.List (dropWhileEnd, find, nub)
 import Import
 
@@ -58,10 +58,10 @@ file = example
 newtype LineNumber = LineNumber Integer
   deriving (Show)
 
-newtype CharacterNumber = CharacterNumber Integer
+newtype Column = Column Integer
   deriving (Show)
 
-type Location = (LineNumber, CharacterNumber)
+type Location = (LineNumber, Column)
 
 data ParsedNumber = PartNumber Integer Location | OtherNumber Integer Location
   deriving (Show)
@@ -75,51 +75,71 @@ type ParsedLine = ([ParsedNumber], [Symbol])
 data Env = EnvData
   { currentLine :: String,
     lineNumber :: Integer,
-    characterNumber :: Integer,
+    column :: Integer,
     currentlyParsingValue :: String,
     parsedNumbers :: [ParsedNumber],
     parsedSymbols :: [Symbol]
   }
   deriving (Show)
 
--- digit? keep in parsingNumber and append next step
--- not digit? have parsingNumber kept? return parsingNumber as Number
--- continue
+isEngineSymbol :: Char -> Bool
+isEngineSymbol c = c `elem` ['*', '#', '+', '$']
 
 type Parser = Env -> String -> Env
 
-parseChar :: (Char -> Bool) -> Parser
-parseChar match env@(EnvData {currentlyParsingValue = n}) input =
+-- digit? keep in parsingNumber and append next step
+-- not digit? have parsingNumber kept? return parsingNumber as Number
+-- continue
+parseChar :: Parser
+parseChar env@(EnvData {currentlyParsingValue = n, lineNumber = ln, column = col}) input =
   case input of
     [] -> env
     (c : cs)
-      | match c ->
-          env
-            { currentlyParsingValue = n ++ [c],
-              currentLine = cs,
-              characterNumber = characterNumber env + 1
-            }
-      -- Store the number we were parsing when it's done
-      | not (null (currentlyParsingValue env)) ->
-          let lineNumber' = LineNumber $ lineNumber env
-              characterNumber' = CharacterNumber $ characterNumber env
-              number = read [c] :: Integer
-              parsedNumber = PartNumber number (lineNumber', characterNumber')
-           in env
-                { parsedNumbers = parsedNumber : parsedNumbers env,
+      -- TODO: break out these case bodies as functions
+      | isDigit c ->
+          parseChar
+            ( env
+                { currentlyParsingValue = n ++ [c],
                   currentLine = cs,
-                  characterNumber = characterNumber env + 1
+                  column = col + 1
                 }
-      -- TODO: parse symbols
+            )
+            cs
+      | isEngineSymbol c ->
+          parseChar
+            ( env
+                { currentlyParsingValue = "",
+                  currentLine = cs,
+                  column = col + 1
+                }
+            )
+            cs
+      -- Store the value we were parsing when it's done
+      | not (null (currentlyParsingValue env)) ->
+          let lineNumber' = LineNumber ln
+              column' = Column col
+              number = fromMaybe 0 $ readMaybe n
+              parsedNumber = PartNumber number (lineNumber', column')
+           in parseChar
+                ( env
+                    { currentlyParsingValue = "",
+                      parsedNumbers = parsedNumber : parsedNumbers env,
+                      currentLine = cs,
+                      column = col + 1
+                    }
+                )
+                cs
       | otherwise ->
-          env
-            { currentLine = cs,
-              characterNumber = characterNumber env + 1
-            }
+          parseChar
+            ( env
+                { currentLine = cs,
+                  column = col + 1
+                }
+            )
+            cs
 
 runParser :: Parser -> String -> Env
-runParser p i =
-  p (EnvData i 0 0 "" [] []) i
+runParser p i = p (EnvData i 0 0 "" [] []) i
 
 ---------- End Pt. 1 Initial Attempt -------------
 
@@ -127,10 +147,9 @@ part1 :: IO String
 part1 = do
   contents <- readFile file
   let ls = lines contents
-      parseC = parseChar isDigit
-      parseLine = runParser parseC
+      parseLine = runParser parseChar
       parsedLine = parseLine $ head ls
-      -- parsedLines = map (map (runParser parseChar)) ls
+      -- parsedLines = map parseLine ls
       answer = "0"
   return $ show parsedLine
 
