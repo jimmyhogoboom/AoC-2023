@@ -27,7 +27,15 @@ library
   exposed-modules:
       Day1
       Day2
-      Day3
+      Day3.Main
+      Day3.Part1
+      Day3.Part2
+      Day3.Types
+      Day4.Main
+      Day4.Parser
+      Day4.Part1
+      Day4.Part2
+      Day4.Types
       Import
       Run
       Types
