@@ -1,8 +1,7 @@
-module Day4.Part1 where
+module Day4.Part1 (parseLines, winners, score) where
 
-import Data.Char (isDigit, isSpace)
+import Data.Char (isSpace)
 import Data.List (dropWhileEnd)
-import Import
 
 wordsWhen :: (Char -> Bool) -> [Char] -> [String]
 wordsWhen p s = case dropWhile p s of
@@ -63,29 +62,36 @@ instance Num MyNumber where
 data ParsedCard = ParsedCard CardNumber [WinningNumber] [MyNumber]
   deriving (Show)
 
--- Split on ':' -> [cardNumber, cardValues]
--- cardNumber splitOn ' ' -> [_, cardNumber]
--- cardValues splitOn '|' -> [winningNumbers, cardNumbers]
--- [winningNumbers, cardNumbers] splitOn ' ' -> [[winningNumbers], [cardNumbers]]
+fromWinningNumber :: WinningNumber -> Integer
+fromWinningNumber (WinningNumber n) = n
 
-cardNumber :: String -> Maybe CardNumber
-cardNumber input = do
+fromMyNumber :: MyNumber -> Integer
+fromMyNumber (MyNumber n) = n
+
+cardWinners :: ParsedCard -> [Integer]
+cardWinners (ParsedCard _ winNums _) = map fromWinningNumber winNums
+
+cardMyNumbers :: ParsedCard -> [Integer]
+cardMyNumbers (ParsedCard _ _ mine) = map fromMyNumber mine
+
+parseCardNumber :: String -> Maybe CardNumber
+parseCardNumber input = do
   (numString, _) <- dualSplit ':' input
   (_, cardNum) <- dualSplit ' ' numString
   return $ CardNumber $ read cardNum
 
-cardPicks :: String -> Maybe ([WinningNumber], [MyNumber])
-cardPicks input = do
+parseCardPicks :: String -> Maybe ([WinningNumber], [MyNumber])
+parseCardPicks input = do
   (_, nums) <- dualSplit ':' input
-  (winners, mine) <- dualSplit '|' nums
-  let winners' = map (WinningNumber . read) $ splitOn ' ' $ trim winners
+  (wins, mine) <- dualSplit '|' nums
+  let wins' = map (WinningNumber . read) $ splitOn ' ' $ trim wins
       mine' = map (MyNumber . read) $ splitOn ' ' $ trim mine
-  return (winners', mine')
+  return (wins', mine')
 
 parseCard :: String -> Maybe ParsedCard
 parseCard input = do
-  num <- cardNumber input
-  (wins, mine) <- cardPicks input
+  num <- parseCardNumber input
+  (wins, mine) <- parseCardPicks input
   return $ ParsedCard num wins mine
   
 parseLines :: [String] -> Maybe [ParsedCard]
@@ -98,10 +104,15 @@ parseLines il = go ([], il)
           go (card : cards, ls)
         [] -> Just cards
 
--- parsePartNumbers :: [String] -> [ParsedNumber]
--- parsePartNumbers ls =
---   let parsedLines = parseLines ls
---       symbols = parsedSymbols parsedLines
---       nums = parsedNumbers parsedLines
---       identifiedNumbers = map (idPart symbols) nums
---    in onlyParts identifiedNumbers
+winners :: ParsedCard -> [Integer]
+winners c = intersection (cardWinners c) (cardMyNumbers c)
+  where 
+    intersection :: [Integer] -> [Integer] -> [Integer]
+    intersection a b = filter (`elem` b) a
+
+score :: [Integer] -> Integer
+score vals = case vals of
+  [] -> 0
+  [_] -> 1
+  _ -> foldl (\s _ -> s * 2) 1 [2..len]
+  where len = toInteger $ length vals
