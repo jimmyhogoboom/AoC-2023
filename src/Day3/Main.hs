@@ -19,7 +19,7 @@ puzzleInput = "src/input/day3.txt"
 testInput = "src/input/day3test.txt"
 
 file :: String
-file = example
+file = puzzleInput
 
 -- adjacent is:
 -- - Number is immediately followed by a Symbol (123*)
@@ -36,7 +36,7 @@ part1 = do
   let ls = lines contents
       parts = P1.parsePartNumbers ls
       answer = P1.sumOfParts parts
-      -- partNumbers = map partNumber parts
+  -- partNumbers = map partNumber parts
   return $ show answer
 
 part2 :: IO String
@@ -44,4 +44,5 @@ part2 = do
   contents <- readFile file
   let ls = lines contents
       gears = parseGears ls
-  return $ show gears
+      answer = sumOfGears gears
+  return $ show answer

@@ -4,21 +4,21 @@ import Data.Char (isDigit)
 import Day3.Types hiding
   ( Env,
     EnvData,
-    Symbol,
     Parser,
+    Symbol,
     column,
     currentLine,
     currentlyParsingValue,
+    indexOfSymbol,
     lineNumber,
-    parsingStartedAt,
+    lineNumberOfSymbol,
     parsedNumbers,
     parsedSymbols,
-    lineNumberOfSymbol,
-    indexOfSymbol
+    parsingStartedAt,
   )
 import Import
 
-data Symbol = Gear String | OtherSymbol String
+data Symbol = Gear String [ParsedNumber] | OtherSymbol String
   deriving (Show)
 
 type ParsedSymbol = (Symbol, Location)
@@ -41,6 +41,10 @@ lineNumberOfSymbol (_, (ln, _)) = ln
 
 indexOfSymbol :: ParsedSymbol -> Column
 indexOfSymbol (_, (_, (i, _))) = i
+
+numbersOfGear :: ParsedSymbol -> [Integer]
+numbersOfGear (Gear _ [OtherNumber p1 _, OtherNumber p2 _], _) = [p1, p2]
+numbersOfGear _ = []
 
 isGearSymbol :: Char -> Bool
 isGearSymbol = (== '*')
@@ -173,9 +177,9 @@ numbersInRange :: [ParsedNumber] -> ParsedSymbol -> [ParsedNumber]
 numbersInRange numbers parsedSymbol =
   filter match numbers
   where
-    validRange n = let
-      (startI, endI) = boundsOfPart n
-      in (startI - 1, endI + 1)
+    validRange n =
+      let (startI, endI) = boundsOfPart n
+       in (startI - 1, endI + 1)
     match n = indexInRange (validRange n) (indexOfSymbol parsedSymbol)
 
 partNumberFromOther :: ParsedNumber -> ParsedNumber
@@ -183,40 +187,22 @@ partNumberFromOther i = case i of
   OtherNumber n l -> PartNumber n l
   _ -> i
 
-gearFromSymbol :: ParsedSymbol -> ParsedSymbol
-gearFromSymbol i = case i of
-  (OtherSymbol n, l) -> (Gear n, l)
+gearFromSymbol :: ParsedSymbol -> [ParsedNumber] -> ParsedSymbol
+gearFromSymbol i ns = case i of
+  (OtherSymbol s, l) -> (Gear s ns, l)
   _ -> i
-
--- check line above, from index start -1 to end + 1
--- check the same line, at indexes start - 1 and end + 1
--- check line below, from index start -1 to end + 1
--- If symbols in any of above, number is a PartNumber
--- idPart :: [Symbol] -> ParsedNumber -> ParsedNumber
--- idPart symbols otherNumber
---   | hasSymbol = partNumberFromOther otherNumber
---   | otherwise = otherNumber
---   where
---     nearLine =
---       join
---         [ symbolsBelowNumber symbols otherNumber,
---           symbolsAboveNumber symbols otherNumber,
---           symbolsOnSameLine symbols otherNumber
---         ]
---     inRange = symbolsInRange nearLine otherNumber
---     hasSymbol = not $ null inRange
 
 onlyGears :: [ParsedSymbol] -> [ParsedSymbol]
 onlyGears = filter isGear
   where
     isGear (s, _) = case s of
-      (Gear _) -> True
+      (Gear _ _) -> True
       _ -> False
 
-sumOfParts :: [ParsedNumber] -> Integer
-sumOfParts = sum . numbers
+sumOfGears :: [ParsedSymbol] -> Integer
+sumOfGears = sum . parts
   where
-    numbers = map partNumber
+    parts = map (product . numbersOfGear)
 
 envFromString :: String -> Env
 envFromString i = EnvData i 0 (Column 0) Nothing "" [] []
@@ -233,7 +219,7 @@ parseLines il = go (envFromString "", il)
 
 idSymbol :: [ParsedNumber] -> ParsedSymbol -> ParsedSymbol
 idSymbol parts symbol
-  | isGear = gearFromSymbol symbol
+  | isGear = gearFromSymbol symbol inRange
   | otherwise = symbol
   where
     nearLine =
@@ -242,7 +228,10 @@ idSymbol parts symbol
           numbersAboveSymbol parts symbol,
           numbersOnSameLine parts symbol
         ]
-    inRange = numbersInRange nearLine symbol
+    gearNums = numbersInRange nearLine symbol
+    inRange = case gearNums of
+      [n1, n2] -> [n1, n2]
+      _ -> []
     isGear = length inRange == 2
 
 parseGears :: [String] -> [ParsedSymbol]
@@ -250,6 +239,5 @@ parseGears ls =
   let parsedLines = parseLines ls
       symbols = parsedSymbols parsedLines
       nums = parsedNumbers parsedLines
-      identifiedGears = map (idSymbol nums) symbols
-   in onlyGears identifiedGears
-
+      identifiedSymbols = map (idSymbol nums) symbols
+   in onlyGears identifiedSymbols
