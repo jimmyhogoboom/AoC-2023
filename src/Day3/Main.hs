@@ -4,7 +4,8 @@ module Day3.Main
   )
 where
 
-import Day3.Part1
+import Day3.Part1 as P1
+import Day3.Part2
 
 example :: String
 example = "src/input/day3example1.txt"
@@ -18,7 +19,7 @@ puzzleInput = "src/input/day3.txt"
 testInput = "src/input/day3test.txt"
 
 file :: String
-file = puzzleInput
+file = example
 
 -- adjacent is:
 -- - Number is immediately followed by a Symbol (123*)
@@ -33,8 +34,8 @@ part1 :: IO String
 part1 = do
   contents <- readFile file
   let ls = lines contents
-      parts = parsePartNumbers ls
-      answer = sumOfParts parts
+      parts = P1.parsePartNumbers ls
+      answer = P1.sumOfParts parts
       -- partNumbers = map partNumber parts
   return $ show answer
 
@@ -42,4 +43,5 @@ part2 :: IO String
 part2 = do
   contents <- readFile file
   let ls = lines contents
-  return $ show ls
+      gears = parseGears ls
+  return $ show gears
