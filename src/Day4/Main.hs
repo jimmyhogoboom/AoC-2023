@@ -15,7 +15,7 @@ puzzleInput :: String
 puzzleInput = "src/input/day4.txt"
 
 file :: String
-file = puzzleInput
+file = example
 
 part1 :: IO String
 part1 = do
@@ -31,6 +31,9 @@ part2 :: IO String
 part2 = do
   contents <- readFile file
   let ls = lines contents
-      answer = "0"
-  return $ show answer
+      cards = fromMaybe [] $ parseLines ls
+      total = map winnerCount cards
+      copies = getAllCopies cards
+      answer = sum total
+  return $ show copies
 

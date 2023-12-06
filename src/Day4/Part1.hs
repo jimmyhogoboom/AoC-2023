@@ -1,4 +1,4 @@
-module Day4.Part1 (parseLines, winners, score) where
+module Day4.Part1 where
 
 import Data.Char (isSpace)
 import Data.List (dropWhileEnd)
