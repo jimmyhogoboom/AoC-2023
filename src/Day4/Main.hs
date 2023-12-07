@@ -6,7 +6,7 @@ where
 
 import Day4.Part1
 import Day4.Part2
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, fromJust)
 
 example :: String
 example = "src/input/day4example1.txt"
@@ -40,5 +40,5 @@ part2 = do
       copies = getCopies winMap ([], [last cardNumbers])
       -- allCopies = getAllCopies cards
       answer = sum total
-  return $ show winRec
+  return $ show $ fromJust winRec
 

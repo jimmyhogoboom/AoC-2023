@@ -34,6 +34,7 @@ findWinsRecord winsMap (CardNumber cn) = find (\(WinMapEntry (CardNumber c, _)) 
 
 getCopies :: [WinMapEntry] -> ([CardNumber], [CardNumber]) -> [CardNumber]
 getCopies winsMap (prevCopies, cardNum@(CardNumber cn) : rest) =
+  -- TODO: you have to stop when 'rest' is empty, too
   case winsRec of
     Just _ -> getCopies winsMap (prevCopies ++ copies, rest)
     Nothing -> prevCopies
