@@ -33,7 +33,12 @@ part2 = do
   let ls = lines contents
       cards = fromMaybe [] $ parseLines ls
       total = map winnerCount cards
-      copies = getAllCopies cards
+      winMap = cardWinMap cards
+      -- copies = getCopies winMap $ cardNumber $ head cards
+      cardNumbers = map cardNumber cards
+      winRec = findWinsRecord winMap $ last cardNumbers
+      copies = getCopies winMap ([], [last cardNumbers])
+      -- allCopies = getAllCopies cards
       answer = sum total
-  return $ show copies
+  return $ show winRec
 

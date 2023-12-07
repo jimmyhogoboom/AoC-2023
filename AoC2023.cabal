@@ -35,7 +35,6 @@ library
       Day4.Parser
       Day4.Part1
       Day4.Part2
-      Day4.Types
       Import
       Run
       Types
