@@ -1,9 +1,10 @@
 module Day4.Part2 where
 
-import Control.Monad (join)
 import Data.Foldable (find)
-import Data.Maybe (fromMaybe, fromJust)
+import Data.Maybe (fromJust, fromMaybe)
 import Day4.Part1
+import Import
+import RIO.State (State, evalState, execState, get, put, runState)
 
 winnerCount :: ParsedCard -> Integer
 winnerCount = toInteger . length . winners
@@ -32,51 +33,44 @@ newtype WinMapEntry = WinMapEntry (CardNumber, Integer)
 findWinsRecord :: [WinMapEntry] -> CardNumber -> Maybe WinMapEntry
 findWinsRecord winsMap (CardNumber cn) = find (\(WinMapEntry (CardNumber c, _)) -> c == cn) winsMap
 
-getCopies :: [WinMapEntry] -> ([CardNumber], [CardNumber]) -> [CardNumber]
-getCopies winsMap (prevCopies, cardNum@(CardNumber cn) : rest) =
-  -- TODO: you have to stop when 'rest' is empty, too
-  case winsRec of
-    Just _ -> getCopies winsMap (prevCopies ++ copies, rest)
-    Nothing -> prevCopies
-  where
-    -- winsRec = find (\(WinMapEntry (CardNumber c, _)) -> c == cn) winMap -- find CardNumber in map
-    winsRec = findWinsRecord winsMap cardNum
-    WinMapEntry (_, wins) = fromJust winsRec
-    start = cn + 1
-    end = cn + wins
-    copies = map CardNumber [start .. end]
-getCopies _ _ = []
-
 cardWinMap :: [ParsedCard] -> [WinMapEntry]
 cardWinMap = map $ WinMapEntry . go
   where
     go card = (cardNumber card, winnerCount card)
 
--- getAllCopies :: [ParsedCard] -> [CardNumber]
--- getAllCopies cards = cardNumbers >>= getCopies winMap
---   where
---     winMap = cardWinMap cards
---     cardNumbers = map cardNumber cards
--- getAllCopies cards = map (getCopies winMap) cardNumbers
---   where
---     winMap = cardWinMap cards
---     cardNumbers = map cardNumber cards
+data CopyState = CopyState
+  { copies :: [CardNumber],
+    newCopies :: [CardNumber]
+  }
+  deriving (Show)
 
--- getCopiesOfCopies :: WinMap -> [CardNumber] -> [CardNumber]
--- getCopiesOfCopies winMap copies = join $ map wins copies
---   where wins c = -- find CardNumber in map
+copiesWon :: [WinMapEntry] -> CardNumber -> [CardNumber]
+copiesWon wm cardNum@(CardNumber cn) =
+  let winsRec = findWinsRecord wm cardNum
+      WinMapEntry (_, wins) = fromJust winsRec
+      start = cn + 1
+      end = cn + wins
+   in map CardNumber [start .. end]
 
--- get count of each card ID by flattening (including the original cards)
--- so [1, 2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 6]
---
--- and win counts = [1 => 4, 2 => 2, 3 => 2, 4 => 1]
--- then multiply the count of each number by the count of the copies it makes (wins)
--- for 1 = 1 * 4 = 4
---     2 = 2 * 2 = 4
---     3 = 3 * 2 = 6
---     4 = 4 * 1 = 6
---     5 = 4 * 0
---     6 = 1 * 0
---               = 20
---
---
+getCopies' :: [WinMapEntry] -> [CardNumber] -> ([CardNumber], CopyState)
+getCopies' _ [] = ([], CopyState {newCopies = [], copies = []})
+getCopies' initialWinMap initialCopies =
+  runState go CopyState {newCopies = initialCopies, copies = []}
+  where
+    go :: State CopyState [CardNumber]
+    go = do
+      CopyState
+        { copies = c,
+          newCopies = nc
+        } <-
+        get
+      case nc of
+        (cn : ncs) -> do
+          let copiesWon' = copiesWon initialWinMap cn
+          put $
+            CopyState
+              { copies = cn : c,
+                newCopies = ncs ++ copiesWon'
+              }
+          go
+        [] -> return c

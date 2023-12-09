@@ -32,13 +32,9 @@ part2 = do
   contents <- readFile file
   let ls = lines contents
       cards = fromMaybe [] $ parseLines ls
-      total = map winnerCount cards
       winMap = cardWinMap cards
-      -- copies = getCopies winMap $ cardNumber $ head cards
       cardNumbers = map cardNumber cards
-      winRec = findWinsRecord winMap $ last cardNumbers
-      copies = getCopies winMap ([], [last cardNumbers])
-      -- allCopies = getAllCopies cards
-      answer = sum total
-  return $ show $ fromJust winRec
+      copies' = getCopies' winMap cardNumbers
+      answer = length $ fst copies'
+  return $ show answer
 
