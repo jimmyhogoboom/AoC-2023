@@ -1,10 +1,9 @@
-module Day4.Part2 where
+module Day4.Part2 (cardNumber, cardWinMap, getCopies) where
 
 import Data.Foldable (find)
-import Data.Maybe (fromJust, fromMaybe)
+import Data.Maybe (fromJust)
 import Day4.Part1
-import Import
-import RIO.State (State, evalState, execState, get, put, runState)
+import RIO.State (State, get, put, runState)
 
 winnerCount :: ParsedCard -> Integer
 winnerCount = toInteger . length . winners
@@ -52,9 +51,9 @@ copiesWon wm cardNum@(CardNumber cn) =
       end = cn + wins
    in map CardNumber [start .. end]
 
-getCopies' :: [WinMapEntry] -> [CardNumber] -> ([CardNumber], CopyState)
-getCopies' _ [] = ([], CopyState {newCopies = [], copies = []})
-getCopies' initialWinMap initialCopies =
+getCopies :: [WinMapEntry] -> [CardNumber] -> ([CardNumber], CopyState)
+getCopies _ [] = ([], CopyState {newCopies = [], copies = []})
+getCopies initialWinMap initialCopies =
   runState go CopyState {newCopies = initialCopies, copies = []}
   where
     go :: State CopyState [CardNumber]
