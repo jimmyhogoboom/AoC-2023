@@ -1,7 +1,10 @@
+{-# LANGUAGE DeriveGeneric #-}
 module Day4.Part1 where
 
 import Data.Char (isSpace)
 import Data.List (dropWhileEnd)
+import Import (Hashable)
+import GHC.Generics (Generic)
 
 wordsWhen :: (Char -> Bool) -> [Char] -> [String]
 wordsWhen p s = case dropWhile p s of
@@ -24,7 +27,9 @@ trim :: String -> String
 trim = dropWhileEnd isSpace . dropWhile isSpace
 
 newtype CardNumber = CardNumber Integer
-  deriving (Show, Eq)
+  deriving (Show, Eq, Ord, Generic)
+
+instance Hashable CardNumber
 
 newtype WinningNumber = WinningNumber Integer
   deriving (Show, Eq)
