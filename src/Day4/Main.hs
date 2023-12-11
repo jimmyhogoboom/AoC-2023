@@ -15,8 +15,8 @@ puzzleInput :: String
 puzzleInput = "src/input/day4.txt"
 
 file :: String
--- file = puzzleInput
-file = example
+file = puzzleInput
+-- file = example
 
 part1 :: IO String
 part1 = do
@@ -34,9 +34,8 @@ part2 = do
   let ls = lines contents
       cards = fromMaybe [] $ parseLines ls
       winMap = cardWinMap cards
-      cardNumbers = map cardNumber cards
-      copies = getCopies winMap
-      count = countCopies winMap
-      answer = length $ fst copies
-  return $ show (fst copies, count)
+      copies = fst $ getCopies winMap
+      oc = onlyCounts copies
+      answer = sum oc
+  return $ show (answer, oc)
 

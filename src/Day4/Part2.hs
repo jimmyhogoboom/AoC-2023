@@ -1,4 +1,4 @@
-module Day4.Part2 (cardNumber, cardWinMap, getCopies, countCopies) where
+module Day4.Part2 (cardNumber, cardWinMap, getCopies, countCopies, onlyCounts) where
 
 import Data.Maybe (fromJust)
 import Day4.Part1
@@ -61,7 +61,6 @@ getCopies =
       cardMap <- get
       let isMember = HM.member cn cardMap
           newMap = copiesWon cardMap cn
-          -- newC = HM.insert cn nc cardMap
       if isMember
       then do 
         put newMap
@@ -69,9 +68,9 @@ getCopies =
       else return cardMap
 
 onlyCounts :: CardMap -> [Integer]
-onlyCounts = HM.map go
-   where go :: (WinCount, CardCount) -> CardCount
-         go (_, copyCount) = copyCount
+onlyCounts = HM.foldl' go []
+   where go :: [Integer] -> (WinCount, CardCount) -> [Integer]
+         go acc (_, copyCount) = copyCount : acc
 
 countCopies :: CardMap -> Integer
 countCopies = HM.foldl' go 0
