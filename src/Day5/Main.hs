@@ -1,22 +1,21 @@
-module Day4.Main
+module Day5.Main
   ( part1,
     part2,
   )
 where
 
-import Day4.Part1
-import Day4.Part2
+import Day5.Part1
+import Day5.Part2
 import Data.Maybe (fromMaybe)
 
 example :: String
-example = "src/input/day4example1.txt"
+example = "src/input/day5example1.txt"
 
 puzzleInput :: String
-puzzleInput = "src/input/day4.txt"
+puzzleInput = "src/input/day5.txt"
 
 file :: String
--- file = puzzleInput
-file = example
+file = puzzleInput
 
 part1 :: IO String
 part1 = do
@@ -35,8 +34,7 @@ part2 = do
       cards = fromMaybe [] $ parseLines ls
       winMap = cardWinMap cards
       cardNumbers = map cardNumber cards
-      copies = getCopies winMap
-      count = countCopies winMap
+      copies = getCopies winMap cardNumbers
       answer = length $ fst copies
-  return $ show (fst copies, count)
+  return $ show answer
 
