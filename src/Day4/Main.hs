@@ -37,5 +37,5 @@ part2 = do
       copies = fst $ getCopies winMap
       oc = onlyCounts copies
       answer = sum oc
-  return $ show (answer, oc)
+  return $ show answer
 
